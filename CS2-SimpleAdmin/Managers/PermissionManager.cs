@@ -111,21 +111,21 @@ public class PermissionManager(Database.Database? database)
         }
     }
 
-    /*
+    
 	public async Task<Dictionary<int, Tuple<List<string>, List<Tuple<string, DateTime?>>, int>>> GetAllGroupsFlags()
 	{
 		try
 		{
-			await using MySqlConnection connection = await _database.GetConnectionAsync();
+			await using MySqlConnection connection = await database.GetConnectionAsync();
 
-			string sql = "SELECT group_id FROM sa_groups_servers WHERE server_id = @serverid";
+			string sql = "SELECT group_id FROM sa_groups_servers WHERE server_id IS NULL or server_id = @serverid";
 			var groupIds = connection.Query<int>(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
 
 			sql = @"
             SELECT g.group_id, f.flag 
             FROM sa_groups_flags f
             JOIN sa_groups_servers g ON f.group_id = g.group_id
-            WHERE g.server_id = @serverid";
+            WHERE g.server_id IS NULL or g.server_id = @serverid";
 
 			var groupFlagData = connection.Query(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
 
@@ -174,7 +174,7 @@ public class PermissionManager(Database.Database? database)
 
 		return [];
 	}
-	*/
+	
 
     private async Task<Dictionary<string, (List<string>, int)>> GetAllGroupsData()
     {
@@ -252,7 +252,7 @@ public class PermissionManager(Database.Database? database)
         await File.WriteAllTextAsync(filePath, json);
     }
 
-    /*
+    
 	public async Task GiveAllGroupsFlags()
 	{
 		Dictionary<int, Tuple<List<string>, List<Tuple<string, DateTime?>>, int>> groupFlags = await GetAllGroupsFlags();
@@ -270,9 +270,9 @@ public class PermissionManager(Database.Database? database)
 
 				if (!string.IsNullOrEmpty(steamIdStr) && SteamID.TryParse(steamIdStr, out var steamId) && steamId != null)
 				{
-					if (!_adminCache.ContainsKey(steamId))
+					if (!AdminCache.ContainsKey(steamId))
 					{
-						_adminCache.TryAdd(steamId, ends);
+						AdminCache.TryAdd(steamId, ends);
 					}
 
 					Helper.GivePlayerFlags(steamId, flags, (uint)immunity);
@@ -282,7 +282,7 @@ public class PermissionManager(Database.Database? database)
 			}
 		}
 	}
-	*/
+	
     /*
 	public async Task GiveAllFlags()
 	{
