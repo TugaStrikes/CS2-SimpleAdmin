@@ -38,7 +38,7 @@ public partial class CS2_SimpleAdmin
         {
             if (!caller.CanTarget(player)) return;
             
-            if (!int.TryParse(command.GetArg(2), out var time) && caller != null && caller.IsValid)
+            if (!int.TryParse(command.GetArg(2), out var time) && caller != null && caller.IsValid && Config.OtherSettings.ShowBanMenuIfNoTime)
             {
                 DurationMenu.OpenMenu(caller, $"{_localizer?["sa_ban"] ?? "Ban"}: {player.PlayerName}", player,
                     ManagePlayersMenu.BanMenu);
@@ -237,7 +237,7 @@ public partial class CS2_SimpleAdmin
     {
         if (caller == null) return true;
 
-        bool canPermBan = AdminManager.PlayerHasPermissions(caller, "@css/permban");
+        var canPermBan = AdminManager.PlayerHasPermissions(caller, "@css/permban");
 
         if (duration <= 0 && canPermBan == false)
         {
@@ -393,8 +393,6 @@ public partial class CS2_SimpleAdmin
     public void OnUnwarnCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (Database == null) return;
-
-        var callerSteamId = caller?.SteamID.ToString() ?? _localizer?["sa_console"] ?? "Console";
 
         if (command.GetArg(1).Length <= 1)
         {

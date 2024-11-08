@@ -11,7 +11,7 @@ using MySqlConnector;
 
 namespace CS2_SimpleAdmin;
 
-[MinimumApiVersion(271)]
+[MinimumApiVersion(279)]
 public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdminConfig>
 {
     internal static CS2_SimpleAdmin Instance { get; private set; } = new();
@@ -19,7 +19,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
     public override string ModuleAuthor => "daffyy & Dliix66";
-    public override string ModuleVersion => "1.6.2a";
+    public override string ModuleVersion => "1.6.7a";
     
     public override void Load(bool hotReload)
     {
@@ -48,6 +48,8 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         SimpleAdminApi = new Api.CS2_SimpleAdminApi();
         Capabilities.RegisterPluginCapability(ICS2_SimpleAdminApi.PluginCapability, () => SimpleAdminApi);
+        
+        new PlayerManager().CheckPlayersTimer();
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -63,13 +65,13 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     public void OnConfigParsed(CS2_SimpleAdminConfig config)
     {
+        Instance = this;
+        _logger = Logger;
+        
         if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
         {
             throw new Exception("[CS2-SimpleAdmin] You need to setup Database credentials in config!");
         }
-
-        Instance = this;
-        _logger = Logger;
         
         MySqlConnectionStringBuilder builder = new()
         {
@@ -95,11 +97,6 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         Task.Run(() => Database.DatabaseMigration());
         
-        PermissionManager = new PermissionManager(Database);
-        BanManager = new BanManager(Database);
-        MuteManager = new MuteManager(Database);
-        WarnManager = new WarnManager(Database);
-
         Config = config;
         Helper.UpdateConfig(config);
 
@@ -116,6 +113,11 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         PluginInfo.ShowAd(ModuleVersion);
         if (Config.EnableUpdateCheck)
             Task.Run(async () => await PluginInfo.CheckVersion(ModuleVersion, _logger));
+        
+        PermissionManager = new PermissionManager(Database);
+        BanManager = new BanManager(Database);
+        MuteManager = new MuteManager(Database);
+        WarnManager = new WarnManager(Database);
     }
 
     private static TargetResult? GetTarget(CommandInfo command)

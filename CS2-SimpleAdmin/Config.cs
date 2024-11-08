@@ -108,6 +108,8 @@ public class CustomServerCommandData
 
 public class MenuConfig
 {
+    [JsonPropertyName("MenuType")] public string MenuType { get; set; } = "selectable";
+
     [JsonPropertyName("Durations")]
     public DurationItem[] Durations { get; set; } =
     [
@@ -201,6 +203,9 @@ public class OtherSettings
 
     [JsonPropertyName("MaxBanDuration")]
     public int MaxBanDuration { get; set; } = 60 * 24 * 7;
+    
+    [JsonPropertyName("MaxMuteDuration")]
+    public int MaxMuteDuration { get; set; } = 60 * 24 * 7;
 
     [JsonPropertyName("ExpireOldIpBans")]
     public int ExpireOldIpBans { get; set; } = 0;
@@ -213,11 +218,17 @@ public class OtherSettings
     
     [JsonPropertyName("NotifyPenaltiesToAdminOnConnect")]
     public bool NotifyPenaltiesToAdminOnConnect { get; set; } = true;
+    
+    [JsonPropertyName("ShowBanMenuIfNoTime")]
+    public bool ShowBanMenuIfNoTime { get; set; } = true;
+    
+    [JsonPropertyName("UserMessageGagChatType")]
+    public bool UserMessageGagChatType { get; set; } = false;
 }
 
 public class CS2_SimpleAdminConfig : BasePluginConfig
 {
-    [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 20;
+    [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 23;
 
     [JsonPropertyName("DatabaseHost")]
     public string DatabaseHost { get; set; } = "";

@@ -1,6 +1,6 @@
+using System.Collections;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -14,18 +14,38 @@ using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Globalization;
+using System.Reflection;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using MenuManager;
 
 namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(usage: "[#userid or name]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPenaltiesCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (caller == null || caller.IsValid == false || !caller.UserId.HasValue || Database == null)
             return;
-
+        
         var userId = caller.UserId.Value;
+        
+        if (!string.IsNullOrEmpty(command.GetArg(1)) && AdminManager.PlayerHasPermissions(caller, "@css/kick"))
+        {
+            var targets = GetTarget(command);
+            
+            if (targets == null)
+                return;
+            
+            var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+            playersToTarget.ForEach(player =>
+            {
+                if (!player.UserId.HasValue) return;
+                if (!caller!.CanTarget(player)) return;
+
+                userId = player.UserId.Value;
+            });
+        }
 
         Task.Run(async () =>
         {
@@ -103,7 +123,7 @@ public partial class CS2_SimpleAdmin
                 {
                     caller.SendLocalizedMessage(_localizer, "sa_player_penalty_info",
                     [
-                        caller.PlayerName,
+                        PlayersInfo[userId].Name,
                         PlayersInfo[userId].TotalBans,
                         PlayersInfo[userId].TotalGags,
                         PlayersInfo[userId].TotalMutes,
@@ -181,10 +201,9 @@ public partial class CS2_SimpleAdmin
     public static void AddAdmin(CCSPlayerController? caller, string steamid, string name, string flags, int immunity, int time = 0, bool globalAdmin = false, CommandInfo? command = null)
     {
         if (Database == null) return;
-        PermissionManager adminManager = new(Database);
-
+        
         var flagsList = flags.Split(',').Select(flag => flag.Trim()).ToList();
-        _ = adminManager.AddAdminBySteamId(steamid, name, flagsList, immunity, time, globalAdmin);
+        _ = Instance.PermissionManager.AddAdminBySteamId(steamid, name, flagsList, immunity, time, globalAdmin);
 
         Helper.LogCommand(caller, $"css_addadmin {steamid} {name} {flags} {immunity} {time}");
 
@@ -272,10 +291,9 @@ public partial class CS2_SimpleAdmin
     private static void AddGroup(CCSPlayerController? caller, string name, string flags, int immunity, bool globalGroup, CommandInfo? command = null)
     {
         if (Database == null) return;
-        PermissionManager adminManager = new(Database);
 
         var flagsList = flags.Split(',').Select(flag => flag.Trim()).ToList();
-        _ = adminManager.AddGroup(name, flagsList, immunity, globalGroup);
+        _ = Instance.PermissionManager.AddGroup(name, flagsList, immunity, globalGroup);
 
         Helper.LogCommand(caller, $"css_addgroup {name} {flags} {immunity}");
 
@@ -350,12 +368,10 @@ public partial class CS2_SimpleAdmin
             AdminManager.RemovePlayerAdminData(steamId);
         }
 
-        PermissionManager adminManager = new(Database);
-
         Task.Run(async () =>
         {
-            await adminManager.CrateGroupsJsonFile();
-            await adminManager.CreateAdminsJsonFile();
+            await PermissionManager.CrateGroupsJsonFile();
+            await PermissionManager.CreateAdminsJsonFile();
 
             var adminsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/admins.json");
             var groupsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/groups.json");
@@ -482,13 +498,13 @@ public partial class CS2_SimpleAdmin
     {
         if (_localizer == null || caller == null) return;
 
-        var disconnectedMenu = MenuApi?.NewMenu(_localizer["sa_menu_disconnected_title"]);
+        var disconnectedMenu = Helper.CreateMenu(_localizer["sa_menu_disconnected_title"]);
 
         DisconnectedPlayers.ForEach(player =>
         {
             disconnectedMenu?.AddMenuOption(player.Name, (_, _) =>
             {
-                var disconnectedMenuAction = MenuApi?.NewMenu(_localizer["sa_menu_disconnected_action_title"]);
+                var disconnectedMenuAction = Helper.CreateMenu(_localizer["sa_menu_disconnected_action_title"]);
                 disconnectedMenuAction?.AddMenuOption(_localizer["sa_ban"], (_, _) =>
                 {
                     DurationMenu.OpenMenu(caller, _localizer["sa_ban"], player, (_, _, duration) =>
@@ -552,7 +568,7 @@ public partial class CS2_SimpleAdmin
 
             var userId = player.UserId.Value;
 
-            IMenu? warnsMenu = MenuApi?.NewMenu(_localizer["sa_admin_warns_menu_title", player.PlayerName]);
+            IMenu? warnsMenu = Helper.CreateMenu(_localizer["sa_admin_warns_menu_title", player.PlayerName]);
 
             Task.Run(async () =>
             {
@@ -876,6 +892,76 @@ public partial class CS2_SimpleAdmin
     public void OnRestartCommand(CCSPlayerController? caller, CommandInfo command)
     {
         RestartGame(caller);
+    }
+
+    [RequiresPermissions("@css/root")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnPluginManagerCommand(CCSPlayerController? caller, CommandInfo commandInfo)
+    {
+        if (MenuApi == null || caller == null)
+            return;
+        
+        var pluginManager = Helper.GetPluginManager();
+        if (pluginManager == null)
+        {
+            Logger.LogError("Unable to access PluginManager.");
+            return;
+        }
+
+        var getLoadedPluginsMethod = pluginManager.GetType().GetMethod("GetLoadedPlugins", BindingFlags.Public | BindingFlags.Instance);
+        if (getLoadedPluginsMethod?.Invoke(pluginManager, null) is not IEnumerable plugins)
+        {
+            Logger.LogError("Unable to retrieve plugins.");
+            return;
+        }
+
+        var pluginsMenu = Helper.CreateMenu(Localizer["sa_menu_pluginsmanager_title"]);
+        
+        foreach (var plugin in plugins)
+        {
+            var pluginType = plugin.GetType();
+
+            // Accessing each property with the Type of the plugin
+            var pluginId = pluginType.GetProperty("PluginId")?.GetValue(plugin);
+            var state = pluginType.GetProperty("State")?.GetValue(plugin)?.ToString();
+            var path = pluginType.GetProperty("FilePath")?.GetValue(plugin)?.ToString();
+            path = Path.GetFileName(Path.GetDirectoryName(path));
+
+            // Access nested properties within "Plugin" (like ModuleName, ModuleVersion, etc.)
+            var nestedPlugin = pluginType.GetProperty("Plugin")?.GetValue(plugin);
+            if (nestedPlugin == null) continue;
+            
+            var status = state?.ToUpper() != "UNLOADED" ? "ON" : "OFF";
+            var allowedMenuTypes = new[] { "chat", "console" };
+
+            if (!allowedMenuTypes.Contains(Config.MenuConfigs.MenuType) && MenuApi.GetMenuType(caller) >= MenuType.CenterMenu)
+                status = state?.ToUpper() != "UNLOADED" ? "<font color='lime'>ON</font>" : "<font color='red'>OFF</font>";
+            var nestedType = nestedPlugin.GetType();
+            var moduleName = nestedType.GetProperty("ModuleName")?.GetValue(nestedPlugin)?.ToString() ?? "Unknown";
+            var moduleVersion = nestedType.GetProperty("ModuleVersion")?.GetValue(nestedPlugin)?.ToString();
+            // var moduleAuthor = nestedType.GetProperty("ModuleAuthor")?.GetValue(nestedPlugin)?.ToString();
+            // var moduleDescription = nestedType.GetProperty("ModuleDescription")?.GetValue(nestedPlugin)?.ToString();
+
+            pluginsMenu?.AddMenuOption($"({status}) [{moduleName} {moduleVersion}]", (_, _) =>
+            {
+                if (state?.ToUpper() != "UNLOADED")
+                {
+                    caller.SendLocalizedMessage(Localizer, "sa_menu_pluginsmanager_unloaded", moduleName);
+                    Server.ExecuteCommand($"css_plugins unload {pluginId}");
+                }
+                else
+                {
+                    caller.SendLocalizedMessage(Localizer, "sa_menu_pluginsmanager_loaded", moduleName);
+                    Server.ExecuteCommand($"css_plugins load {path}");
+                }
+
+                AddTimer(0.1f, () => OnPluginManagerCommand(caller, commandInfo));
+            });
+                
+            // Console.WriteLine($"[#{pluginId}:{state?.ToUpper()}]: \"{moduleName ?? "Unknown"}\" ({moduleVersion ?? "Unknown"}) by {moduleAuthor}");
+        }
+        
+        pluginsMenu?.Open(caller);
     }
 
     public static void RestartGame(CCSPlayerController? admin)
