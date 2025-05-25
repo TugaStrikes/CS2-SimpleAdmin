@@ -65,12 +65,15 @@ public static class FunActionsMenu
         if (AdminManager.CommandIsOverriden("css_respawn")
                 ? AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), AdminManager.GetPermissionOverrides("css_respawn"))
                 : AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/cheats"))
-            options.Add(new ChatMenuOptionData(localizer?["sa_respawn"] ?? "Respawn", () => PlayersMenu.OpenDeadMenu(admin, localizer?["sa_respawn"] ?? "Respawn", Respawn)));
+                    options.Add(new ChatMenuOptionData(localizer?["sa_respawn"] ?? "Respawn", () => PlayersMenu.OpenDeadMenu(admin, localizer?["sa_respawn"] ?? "Respawn", Respawn)));
+        if (AdminManager.CommandIsOverriden("css_drespawn")
+                ? AdminManager.PlayerHasPermissions(admin, AdminManager.GetPermissionOverrides("css_drespawn"))
+                : AdminManager.PlayerHasPermissions(admin, "@css/cheats"))
+                    options.Add(new ChatMenuOptionData(localizer?["sa_drespawn"] ?? "Death Respawn", () => PlayersMenu.OpenDeadMenu(admin, localizer?["sa_drespawn"] ?? "Death Respawn", DRespawn)));
         if (AdminManager.CommandIsOverriden("css_give")
                 ? AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), AdminManager.GetPermissionOverrides("css_give"))
                 : AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/cheats"))
             options.Add(new ChatMenuOptionData(localizer?["sa_give_weapon"] ?? "Give Weapon", () => PlayersMenu.OpenAliveMenu(admin, localizer?["sa_give_weapon"] ?? "Give Weapon", GiveWeaponMenu)));
-
         if (AdminManager.CommandIsOverriden("css_strip")
                 ? AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), AdminManager.GetPermissionOverrides("css_strip"))
                 : AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/slay"))
@@ -118,6 +121,11 @@ public static class FunActionsMenu
     private static void Respawn(CCSPlayerController? admin, CCSPlayerController player)
     {
         CS2_SimpleAdmin.Respawn(admin, player);
+    }
+    
+    private static void DRespawn(CCSPlayerController? admin, CCSPlayerController player)
+    {
+        CS2_SimpleAdmin.Respawn(admin, player, null, null, true);
     }
 
     private static void GiveWeaponMenu(CCSPlayerController admin, CCSPlayerController player)

@@ -534,6 +534,56 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
     }
 
+    
+
+    [RequiresPermissions("@css/kick")]
+    [CommandHelper(minArgs: 2, usage: "<#userid or name> [<ct/tt/spec>] [-k]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    public void OnSwapCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
+        var teamName = command.GetArg(2).ToLower();
+        string _teamName;
+        var teamNum = CsTeam.Spectator;
+
+        var targets = GetTarget(command);
+        if (targets == null) return;
+
+        var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+
+        _teamName = "SWAP";
+
+        var kill = command.GetArg(2).ToLower().Equals("-k");
+
+        playersToTarget.ForEach(player =>
+        {
+            ChangeTeam(caller, player, _teamName, teamNum, kill, command);
+        });
+    }
+
+    [RequiresPermissions("@css/kick")]
+    [CommandHelper(minArgs: 2, usage: "<#userid or name> [<ct/tt/spec>] [-k]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    public void OnSpecCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
+        var teamName = command.GetArg(2).ToLower();
+        string _teamName;
+        var teamNum = CsTeam.Spectator;
+
+        var targets = GetTarget(command);
+        if (targets == null) return;
+
+        var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+
+        _teamName = "SPEC";
+
+        var kill = command.GetArg(2).ToLower().Equals("-k");
+
+        playersToTarget.ForEach(player =>
+        {
+            ChangeTeam(caller, player, _teamName, teamNum, kill, command);
+        });
+    }
+
     internal static void ChangeTeam(CCSPlayerController? caller, CCSPlayerController player, string teamName, CsTeam teamNum, bool kill, CommandInfo? command = null)
     {
         // Check if the player is valid and connected
@@ -700,7 +750,29 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
     }
 
-    internal static void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
+    [CommandHelper(1, "<#userid or name>")]
+    [RequiresPermissions("@css/cheats")]
+    public void OnDRespawnCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
+
+        var targets = GetTarget(command);
+        if (targets == null) return;
+        var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+
+        playersToTarget.ForEach(player =>
+        {
+            if (player.Connected != PlayerConnectedState.PlayerConnected)
+                return;
+
+            if (caller!.CanTarget(player))
+            {
+                Respawn(caller, player, callerName, command, true);
+            }
+        });
+    }
+
+    internal static void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null, bool death = false)
     {
         // Check if the caller can target the player
         if (!caller.CanTarget(player)) return;
@@ -716,7 +788,7 @@ public partial class CS2_SimpleAdmin
         _cBasePlayerControllerSetPawnFunc.Invoke(player, playerPawn, true, false);
         VirtualFunction.CreateVoid<CCSPlayerController>(player.Handle, GameData.GetOffset("CCSPlayerController_Respawn"))(player);
 
-        if (player.UserId.HasValue && PlayersInfo.TryGetValue(player.UserId.Value, out var value) && value.DiePosition != null)
+        if (player.UserId.HasValue && PlayersInfo.TryGetValue(player.UserId.Value, out var value) && value.DiePosition != null && death)
             playerPawn.Teleport(value.DiePosition?.Position, value.DiePosition?.Angle);
 
         // Log the command

@@ -253,7 +253,7 @@ public class PermissionManager(Database.Database? database)
         await File.WriteAllTextAsync(filePath, json);
     }
 
-    
+    /*
 	public async Task GiveAllGroupsFlags()
 	{
 		Dictionary<int, Tuple<List<string>, List<Tuple<string, DateTime?>>, int>> groupFlags = await GetAllGroupsFlags();
@@ -283,7 +283,7 @@ public class PermissionManager(Database.Database? database)
 			}
 		}
 	}
-	
+	*/
     /*
 	public async Task GiveAllFlags()
 	{

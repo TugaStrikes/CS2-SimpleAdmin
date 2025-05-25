@@ -74,6 +74,14 @@ public static class ManagePlayersMenu
                 ? AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), AdminManager.GetPermissionOverrides("css_team"))
                 : AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/kick"))
             options.Add(new ChatMenuOptionData(localizer?["sa_team_force"] ?? "Force Team", () => PlayersMenu.OpenMenu(admin, localizer?["sa_team_force"] ?? "Force Team", ForceTeamMenu)));
+        if (AdminManager.CommandIsOverriden("css_swap")
+                ? AdminManager.PlayerHasPermissions(admin, AdminManager.GetPermissionOverrides("css_swap"))
+                : AdminManager.PlayerHasPermissions(admin, "@css/kick"))
+            options.Add(new ChatMenuOptionData(localizer?["sa_team_swap"] ?? "Swap", () => PlayersMenu.OpenMenu(admin, localizer?["sa_team_swap"] ?? "Swap", (admin, player) => CS2_SimpleAdmin.ChangeTeam(admin, player, "SWAP", CsTeam.Spectator, false))));
+        if (AdminManager.CommandIsOverriden("css_spec")
+                ? AdminManager.PlayerHasPermissions(admin, AdminManager.GetPermissionOverrides("css_spec"))
+                : AdminManager.PlayerHasPermissions(admin, "@css/kick"))
+            options.Add(new ChatMenuOptionData(localizer?["sa_team_spec"] ?? "Spec", () => PlayersMenu.OpenMenu(admin, localizer?["sa_team_spec"] ?? "Spec", (admin, player) => CS2_SimpleAdmin.ChangeTeam(admin, player, "SPEC", CsTeam.Spectator, false))));
 
         foreach (var menuOptionData in options)
         {
