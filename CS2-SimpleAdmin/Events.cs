@@ -9,16 +9,21 @@ using CS2_SimpleAdmin.Models;
 using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
+using CounterStrikeSharp.API.ValveConstants.Protobuf;
 
 namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
+    private bool _serverLoading;
+    
     private void RegisterEvents()
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
         if (Config.OtherSettings.UserMessageGagChatType)
             HookUserMessage(118, HookUmChat);
@@ -48,12 +53,19 @@ public partial class CS2_SimpleAdmin
 
     private void OnGameServerSteamAPIActivated()
     {
+        if (_serverLoading)
+            return;
+        
+        _serverLoading = true;
         new ServerManager().LoadServerData();
     }
 
-    [GameEventHandler]
+    [GameEventHandler(HookMode.Pre)]
     public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
+        if (@event.Reason is 149 or 6)
+            info.DontBroadcast = true;
+
         var player = @event.Userid;
 
 #if DEBUG
@@ -61,9 +73,7 @@ public partial class CS2_SimpleAdmin
 #endif
 
         if (player == null || !player.IsValid || player.IsBot)
-        {
             return HookResult.Continue;
-        }
 
 #if DEBUG
         Logger.LogCritical("[OnClientDisconnect] After Check");
@@ -93,17 +103,25 @@ public partial class CS2_SimpleAdmin
             GodPlayers.Remove(player.Slot);
             SpeedPlayers.Remove(player.Slot);
             GravityPlayers.Remove(player);
-            
+
             if (player.UserId.HasValue)
-                PlayersInfo.Remove(player.UserId.Value);
-
-            var authorizedSteamId = player.AuthorizedSteamID;
-            if (authorizedSteamId == null || !PermissionManager.AdminCache.TryGetValue(authorizedSteamId,
-                                              out var expirationTime)
-                                          || !(expirationTime <= Time.ActualDateTime())) return HookResult.Continue;
-
-            AdminManager.ClearPlayerPermissions(authorizedSteamId);
-            AdminManager.RemovePlayerAdminData(authorizedSteamId);
+                PlayersInfo.TryRemove(player.UserId.Value, out _);
+            
+            if (!PermissionManager.AdminCache.TryGetValue(steamId, out var data) 
+                || !(data.ExpirationTime <= Time.ActualDateTime()))
+            {
+                return HookResult.Continue;
+            }
+            
+            AdminManager.RemovePlayerPermissions(steamId, PermissionManager.AdminCache[steamId].Flags.ToArray());
+            AdminManager.RemovePlayerFromGroup(steamId, true, PermissionManager.AdminCache[steamId].Flags.ToArray());
+            var adminData = AdminManager.GetPlayerAdminData(steamId);
+            
+            if (adminData == null || data.Flags.ToList().Count != 0 && adminData.Groups.ToList().Count != 0)
+                return HookResult.Continue;
+							
+            AdminManager.ClearPlayerPermissions(steamId);
+            AdminManager.RemovePlayerAdminData(steamId);
 
             return HookResult.Continue;
         }
@@ -113,15 +131,54 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
         }
     }
+    
+    private void OnClientConnect(int playerslot, string name, string ipaddress)
+    {
+#if DEBUG
+        Logger.LogCritical("[OnClientConnect]");
+#endif
+        if (Config.OtherSettings.BanType == 0)
+            return;
+        
+        if (Instance.CacheManager != null && !Instance.CacheManager.IsPlayerBanned(null, ipaddress.Split(":")[0]))
+                return;
+
+        Server.NextFrame((() =>
+        {
+            var player = Utilities.GetPlayerFromSlot(playerslot);
+            if (player == null || !player.IsValid || player.IsBot)
+                return;
+
+            Helper.KickPlayer(player, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
+        }));
+        
+        // Server.NextFrame(() =>
+        // {
+        //     var player = Utilities.GetPlayerFromSlot(playerslot);
+        //
+        //     if (player == null || !player.IsValid || player.IsBot)
+        //         return;
+        //
+        //     new PlayerManager().LoadPlayerData(player);
+        // });
+    }
 
     [GameEventHandler]
     public HookResult OnPlayerFullConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
+#if DEBUG
+        Logger.LogCritical("[OnPlayerFullConnect]");
+#endif
+
         var player = @event.Userid;
 
         if (player == null || !player.IsValid || player.IsBot)
             return HookResult.Continue;
 
+//         if (player.UserId.HasValue && PlayersInfo.TryGetValue(player.UserId.Value, out PlayerInfo? value) &&
+// value.WaitingForKick)
+//             return HookResult.Continue;
+        
         new PlayerManager().LoadPlayerData(player);
 
         return HookResult.Continue;
@@ -131,7 +188,7 @@ public partial class CS2_SimpleAdmin
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
 #if DEBUG
-        Logger.LogCritical("[OnRoundEnd]");
+        Logger.LogCritical("[OnRoundStart]");
 #endif
 
         GodPlayers.Clear();
@@ -167,13 +224,30 @@ public partial class CS2_SimpleAdmin
         var author = Utilities.GetPlayerFromIndex(um.ReadInt("entityindex"));
         if (author == null || !author.IsValid || author.IsBot)
             return HookResult.Continue;
-        
-        if (PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Gag) || PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Silence))
-            return HookResult.Stop;
 
-        // um.Recipients.Clear();
+        if (!PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Gag, out DateTime? endDateTime) &&
+            !PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Silence, out endDateTime))
+            return HookResult.Continue;
+
+        var message = um.ReadString("param2");
+
+        if (_localizer == null || endDateTime is null) return HookResult.Continue;
+
+        if (CoreConfig.PublicChatTrigger.Concat(CoreConfig.SilentChatTrigger).Any(trigger => message.StartsWith(trigger)))
+        {
+            foreach (var recipient in um.Recipients)
+            {
+                if (recipient == author)
+                    continue;
+            
+                um.Recipients.Remove(recipient);
+            }
+
+            return HookResult.Continue;
+        }
         
-        return HookResult.Continue;
+        author.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", author.GetLanguage()));
+        return HookResult.Stop;
     }
 
     private HookResult ComamndListenerHandler(CCSPlayerController? player, CommandInfo info)
@@ -182,6 +256,9 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
 
         var command = info.GetArg(0).ToLower();
+
+        if (Config.OtherSettings.AdditionalCommandsToLog.Contains(command))
+            Helper.LogCommand(player, info);
 
         switch (command)
         {
@@ -201,8 +278,8 @@ public partial class CS2_SimpleAdmin
         
                 if (target == null || !target.IsValid || target.Connected != PlayerConnectedState.PlayerConnected)
                     return HookResult.Continue;
-
-                return !AdminManager.CanPlayerTarget(player, target) ? HookResult.Stop : HookResult.Continue;
+                
+                return !player.CanTarget(target) ? HookResult.Stop : HookResult.Continue;
             }
         }
 
@@ -210,8 +287,15 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
         
         if (!Config.OtherSettings.UserMessageGagChatType)
-            if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) || PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
+        {
+            if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag, out DateTime? endDateTime) ||
+                PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence, out endDateTime))
+            {
+                if (_localizer != null && endDateTime is not null)
+                    player.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", player.GetLanguage()));
                 return HookResult.Stop;
+            }
+        }
 
         if (info.GetArg(1).StartsWith($"/")
             || info.GetArg(1).StartsWith($"!"))
@@ -221,7 +305,7 @@ public partial class CS2_SimpleAdmin
             return HookResult.Stop;
         
         if (command == "say" && info.GetArg(1).StartsWith($"@") &&
-            AdminManager.PlayerHasPermissions(player, "@css/chat"))
+            AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat"))
         {
             player.ExecuteClientCommandFromServer($"css_say {info.GetArg(1).Remove(0, 1)}");
             return HookResult.Stop;
@@ -230,10 +314,10 @@ public partial class CS2_SimpleAdmin
         if (command != "say_team" || !info.GetArg(1).StartsWith($"@")) return HookResult.Continue;
 
         StringBuilder sb = new();
-        if (AdminManager.PlayerHasPermissions(player, "@css/chat"))
+        if (AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat"))
         {
             sb.Append(_localizer!["sa_adminchat_template_admin", player.PlayerName, info.GetArg(1).Remove(0, 1)]);
-            foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p is { IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
+            foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p is { IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(new SteamID(p.SteamID), "@css/chat")))
             {
                 p.PrintToChat(sb.ToString());
             }
@@ -242,7 +326,7 @@ public partial class CS2_SimpleAdmin
         {
             sb.Append(_localizer!["sa_adminchat_template_player", player.PlayerName, info.GetArg(1).Remove(0, 1)]);
             player.PrintToChat(sb.ToString());
-            foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
+            foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(new SteamID(p.SteamID), "@css/chat")))
             {
                 p.PrintToChat(sb.ToString());
             }
@@ -281,17 +365,17 @@ public partial class CS2_SimpleAdmin
         if (info.GetArg(1).Length == 0)
             return HookResult.Handled;
 
-        if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) || PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
-            return HookResult.Handled;
+        if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag, out _) || PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence, out _))
+            return HookResult.Stop;
 
         if (!info.GetArg(1).StartsWith($"@")) return HookResult.Continue;
 
         StringBuilder sb = new();
 
-        if (AdminManager.PlayerHasPermissions(player, "@css/chat"))
+        if (AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat"))
         {
             sb.Append(_localizer!["sa_adminchat_template_admin", player.PlayerName, info.GetArg(1).Remove(0, 1)]);
-            foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p is { IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
+            foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p is { IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(new SteamID(p.SteamID), "@css/chat")))
             {
                 p.PrintToChat(sb.ToString());
             }
@@ -300,7 +384,7 @@ public partial class CS2_SimpleAdmin
         {
             sb.Append(_localizer!["sa_adminchat_template_player", player.PlayerName, info.GetArg(1).Remove(0, 1)]);
             player.PrintToChat(sb.ToString());
-            foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
+            foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(new SteamID(p.SteamID), "@css/chat")))
             {
                 p.PrintToChat(sb.ToString());
             }
@@ -312,13 +396,15 @@ public partial class CS2_SimpleAdmin
     private void OnMapStart(string mapName)
     {
         if (Config.OtherSettings.ReloadAdminsEveryMapChange && ServerLoaded && ServerId != null)
-            AddTimer(3.0f, () => ReloadAdmins(null));
+            AddTimer(5.0f, () => ReloadAdmins(null));
 
-        AddTimer(34, () =>
-        {
-            if (!ServerLoaded)
-                OnGameServerSteamAPIActivated();
-        });
+        AddTimer(1.0f, () => ServerManager.CheckHibernationStatus());
+
+        // AddTimer(34, () =>
+        // {
+        //     if (!ServerLoaded)
+        //         OnGameServerSteamAPIActivated();
+        // });
 
         GodPlayers.Clear();
         SilentPlayers.Clear();
@@ -333,11 +419,11 @@ public partial class CS2_SimpleAdmin
     {
         var player = @event.Userid;
 
-        if (player is null || @event.Attacker is null || !player.PawnIsAlive || player.PlayerPawn.Value == null)
+        if (player is null || @event.Attacker is null || player.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE || player.PlayerPawn.Value == null)
             return HookResult.Continue;
 
         if (SpeedPlayers.TryGetValue(player.Slot, out var speedPlayer))
-            player.SetSpeed(speedPlayer);
+            AddTimer(0.15f, () => player.SetSpeed(speedPlayer));
         
         if (!GodPlayers.Contains(player.Slot)) return HookResult.Continue;
 
@@ -351,19 +437,31 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         var player = @event.Userid;
-
-        if (player?.UserId == null || player.IsBot || player.Connected != PlayerConnectedState.PlayerConnected)
+        
+        if (player?.UserId == null || !player.IsValid || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
             return HookResult.Continue;
 
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player);
 
-        PlayersInfo[player.UserId.Value].DiePosition =
-            new DiePosition(
-                new Vector(player.PlayerPawn.Value?.AbsOrigin?.X, player.PlayerPawn.Value?.AbsOrigin?.Y,
-                    player.PlayerPawn.Value?.AbsOrigin?.Z),
-                new QAngle(player.PlayerPawn.Value?.AbsRotation?.X, player.PlayerPawn.Value?.AbsRotation?.Y,
-                    player.PlayerPawn.Value?.AbsRotation?.Z));
+        if (!PlayersInfo.ContainsKey(player.UserId.Value) || @event.Attacker == null)
+            return HookResult.Continue;
+
+        var playerPosition = player.PlayerPawn.Value?.AbsOrigin; 
+        var playerRotation = player.PlayerPawn.Value?.AbsRotation;
+        
+        PlayersInfo[player.UserId.Value].DiePosition = new DiePosition(
+            new Vector(
+                playerPosition?.X ?? 0,
+                playerPosition?.Y ?? 0,
+                playerPosition?.Z ?? 0
+            ),
+            new QAngle(
+                playerRotation?.X ?? 0,
+                playerRotation?.Y ?? 0,
+                playerRotation?.Z ?? 0
+            )
+        );
 
         return HookResult.Continue;
     }

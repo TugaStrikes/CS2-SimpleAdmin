@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
+using CounterStrikeSharp.API.Modules.Admin;
 
 namespace CS2_SimpleAdmin.Managers;
 
@@ -12,7 +13,8 @@ public class PermissionManager(Database.Database? database)
 {
     // Unused for now
     //public static readonly ConcurrentDictionary<string, ConcurrentBag<string>> _adminCache = new ConcurrentDictionary<string, ConcurrentBag<string>>();
-    public static readonly ConcurrentDictionary<SteamID, DateTime?> AdminCache = new();
+    // public static readonly ConcurrentDictionary<SteamID, DateTime?> AdminCache = new();
+    public static readonly ConcurrentDictionary<SteamID, (DateTime? ExpirationTime, List<string> Flags)> AdminCache = new();
 
     /*
 	public async Task<List<(List<string>, int)>> GetAdminFlags(string steamId)
@@ -90,14 +92,13 @@ public class PermissionManager(Database.Database? database)
                 ))
                 .ToList();
 
-            /*
-			foreach (var player in groupedPlayers)
-			{
-				Console.WriteLine($"Player SteamID: {player.PlayerSteamId}, Name: {player.PlayerName}, Flags: {string.Join(", ", player.Flags)}, Immunity: {player.Immunity}, Ends: {player.Ends}");
-			}
-			*/
-
-            List<(string, string, List<string>, int, DateTime?)> filteredFlagsWithImmunity = [];
+            
+			// foreach (var player in groupedPlayers)
+			// {
+			// 	Console.WriteLine($"Player SteamID: {player.PlayerSteamId}, Name: {player.PlayerName}, Flags: {string.Join(", ", player.Flags)}, Immunity: {player.Immunity}, Ends: {player.Ends}");
+			// }
+			
+	            List<(string, string, List<string>, int, DateTime?)> filteredFlagsWithImmunity = [];
 
             // Add the grouped players to the list
             filteredFlagsWithImmunity.AddRange(groupedPlayers);
@@ -106,7 +107,7 @@ public class PermissionManager(Database.Database? database)
         }
         catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogError(ex.ToString());
+            CS2_SimpleAdmin._logger?.LogError("Unable to load admins from database! {exception}", ex.Message);
             return [];
         }
     }
@@ -224,7 +225,7 @@ public class PermissionManager(Database.Database? database)
         }
         catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogError(ex.ToString());
+            CS2_SimpleAdmin._logger?.LogError("Unable to load groups from database! {exception}", ex.Message);
         }
 
         return [];
@@ -316,53 +317,132 @@ public class PermissionManager(Database.Database? database)
     {
         List<(string identity, string name, List<string> flags, int immunity, DateTime? ends)> allPlayers = await GetAllPlayersFlags();
         var validPlayers = allPlayers
-            .Where(player => SteamID.TryParse(player.identity, out _)) // Filter invalid SteamID
+            .Where(player => SteamID.TryParse(player.identity, out _))
             .ToList();
 
-        /*
-		foreach (var player in allPlayers)
-		{
-			var (steamId, name, flags, immunity, ends) = player;
-            
-			// Print or process each item
-			Console.WriteLine($"Player SteamID: {steamId}");
-			Console.WriteLine($"Player Name: {name}");
-			Console.WriteLine($"Flags: {string.Join(", ", flags)}");
-			Console.WriteLine($"Immunity: {immunity}");
-			Console.WriteLine($"Ends: {(ends.HasValue ? ends.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Never")}");
-			Console.WriteLine(); // New line for better readability
-		}
-		*/
+		// foreach (var player in allPlayers)
+		// {
+		// 	var (steamId, name, flags, immunity, ends) = player;
+		//           
+		// 	Console.WriteLine($"Player SteamID: {steamId}");
+		// 	Console.WriteLine($"Player Name: {name}");
+		// 	Console.WriteLine($"Flags: {string.Join(", ", flags)}");
+		// 	Console.WriteLine($"Immunity: {immunity}");
+		// 	Console.WriteLine($"Ends: {(ends.HasValue ? ends.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Never")}");
+		// 	Console.WriteLine();
+		// }
 
-        var jsonData = validPlayers
-            .Select(player =>
-            {
-                SteamID.TryParse(player.identity, out var steamId);
+		var jsonData = validPlayers
+			.GroupBy(player => player.name) // Group by player name
+			.ToDictionary(
+				group => group.Key, // Use the player name as the key
+				object (group) =>
+				{
+					// Consolidate data for players with the same name
+					var consolidatedData = group.Aggregate(
+						new
+						{
+							identity = string.Empty,
+							immunity = 0,
+							flags = new List<string>(),
+							groups = new List<string>()
+						},
+						(acc, player) =>
+						{
+							// Merge identities and use the latest or first non-null identity
+							if (string.IsNullOrEmpty(acc.identity) && !string.IsNullOrEmpty(player.identity))
+							{
+								acc = acc with { identity = player.identity };
+							}
 
-                // Update cache if SteamID is valid and not already cached
-                if (steamId != null && !AdminCache.ContainsKey(steamId))
-                {
-                    AdminCache.TryAdd(steamId, player.ends);
-                }
+							// Combine immunities by taking the maximum value
+							acc = acc with { immunity = Math.Max(acc.immunity, player.immunity) };
 
-                // Create an anonymous object with player data
-                return new
-                {
-                    playerName = player.name,
-                    playerData = new
-                    {
-                        player.identity,
-                        player.immunity,
-                        flags = player.flags.Where(flag => flag.StartsWith("@")).ToList(),
-                        groups = player.flags.Where(flag => flag.StartsWith("#")).ToList()
-                    }
-                };
-            })
-            .ToDictionary(item => item.playerName, item => (object)item.playerData);
+							// Combine flags and groups, ensuring no duplicates
+							acc = acc with
+							{
+								flags = acc.flags.Concat(player.flags.Where(flag => flag.StartsWith($"@"))).Distinct().ToList(),
+								groups = acc.groups.Concat(player.flags.Where(flag => flag.StartsWith($"#"))).Distinct().ToList()
+							};
 
+							return acc;
+						});
+					
+					Server.NextFrameAsync(() =>
+					{
+						var keysToRemove = new List<SteamID>();
+
+						foreach (var steamId in AdminCache.Keys.ToList()) 
+						{
+							var data = AdminManager.GetPlayerAdminData(steamId);
+							if (data != null)
+							{
+								var flagsArray = AdminCache[steamId].Flags.ToArray();
+								AdminManager.RemovePlayerPermissions(steamId, flagsArray);
+								AdminManager.RemovePlayerFromGroup(steamId, true, flagsArray);
+							}
+
+							keysToRemove.Add(steamId);
+						}
+
+						foreach (var steamId in keysToRemove)
+						{
+							if (!AdminCache.TryRemove(steamId, out _)) continue;
+
+							var data = AdminManager.GetPlayerAdminData(steamId);
+							if (data == null) continue;
+							if (data.Flags.Count != 0 && data.Groups.Count != 0) continue;
+
+							AdminManager.ClearPlayerPermissions(steamId);
+							AdminManager.RemovePlayerAdminData(steamId);
+						}
+
+						foreach (var player in group)
+						{
+							if (SteamID.TryParse(player.identity, out var steamId) && steamId != null)
+							{
+								AdminCache.TryAdd(steamId, (player.ends, player.flags));
+							}
+						}
+					});
+
+					// Server.NextFrameAsync(() =>
+					// {
+					// 	for (var index = 0; index < AdminCache.Keys.ToList().Count; index++)
+					// 	{
+					// 		var steamId = AdminCache.Keys.ToList()[index];
+					// 		
+					// 		var data = AdminManager.GetPlayerAdminData(steamId);
+					// 		if (data != null)
+					// 		{
+					// 			AdminManager.RemovePlayerPermissions(steamId, AdminCache[steamId].Flags.ToArray());
+					// 			AdminManager.RemovePlayerFromGroup(steamId, true, AdminCache[steamId].Flags.ToArray());
+					// 		}
+					// 		
+					// 		if (!AdminCache.TryRemove(steamId, out _)) continue;
+					//
+					// 		if (data == null) continue;
+					// 		if (data.Flags.ToList().Count != 0 && data.Groups.ToList().Count != 0)
+					// 			continue;
+					// 		
+					// 		AdminManager.ClearPlayerPermissions(steamId);
+					// 		AdminManager.RemovePlayerAdminData(steamId);
+					// 	}
+					// 	
+					// 	foreach (var player in group)
+					// 	{
+					// 		SteamID.TryParse(player.identity, out var steamId);
+					// 		if (steamId == null) continue;
+					// 		AdminCache.TryAdd(steamId, (player.ends, player.flags));
+					// 	}
+					// });
+
+					return consolidatedData;
+				});
+		
         var json = JsonConvert.SerializeObject(jsonData, Formatting.Indented);
-
         var filePath = Path.Combine(CS2_SimpleAdmin.Instance.ModuleDirectory, "data", "admins.json");
+        
         await File.WriteAllTextAsync(filePath, json);
 
         //await File.WriteAllTextAsync(CS2_SimpleAdmin.Instance.ModuleDirectory + "/data/admins.json", json);
@@ -371,7 +451,6 @@ public class PermissionManager(Database.Database? database)
     public async Task DeleteAdminBySteamId(string playerSteamId, bool globalDelete = false)
     {
 	    if (database == null) return;
-
         if (string.IsNullOrEmpty(playerSteamId)) return;
 
         //_adminCache.TryRemove(playerSteamId, out _);
@@ -429,9 +508,20 @@ public class PermissionManager(Database.Database? database)
             {
                 if (flag.StartsWith($"#"))
                 {
-                    const string sql = "SELECT id FROM `sa_groups` WHERE name = @groupName";
-                    var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag });
+                    // const string sql = "SELECT id FROM `sa_groups` WHERE name = @groupName";
+                    // var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag });
 
+                    const string sql = """
+                                           SELECT sgs.group_id 
+                                           FROM sa_groups_servers sgs
+                                           JOIN sa_groups sg ON sgs.group_id = sg.id
+                                           WHERE sg.name = @groupName 
+                                           ORDER BY (sgs.server_id = @serverId) DESC, sgs.server_id ASC
+                                           LIMIT 1
+                                       """;
+
+                    var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag, CS2_SimpleAdmin.ServerId });
+                    
                     if (groupId != null)
                     {
                         const string updateAdminGroup = "UPDATE `sa_admins` SET group_id = @groupId WHERE id = @adminId";
@@ -453,7 +543,7 @@ public class PermissionManager(Database.Database? database)
                 });
             }
 
-            await Server.NextFrameAsync(() =>
+            await Server.NextWorldUpdateAsync(() =>
             {
                 CS2_SimpleAdmin.Instance.ReloadAdmins(null);
             });
@@ -500,7 +590,7 @@ public class PermissionManager(Database.Database? database)
 
             await connection.ExecuteAsync(insertGroupServer, new { groupId, server_id = globalGroup ? null : CS2_SimpleAdmin.ServerId });
 
-            await Server.NextFrameAsync(() =>
+            await Server.NextWorldUpdateAsync(() =>
             {
                 CS2_SimpleAdmin.Instance.ReloadAdmins(null);
             });
@@ -508,7 +598,7 @@ public class PermissionManager(Database.Database? database)
         }
         catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogError(ex.ToString());
+            CS2_SimpleAdmin._logger?.LogError("Problem with loading admins: {exception}", ex.Message);
         }
     }
 

@@ -64,6 +64,8 @@
 	"sa_discord_penalty_warn": "Avertissement enregistré",
 	"sa_discord_penalty_unknown": "Inconnu enregistré",
 
+	"sa_player_penalty_chat_active": "{lightred}Votre chat est bloqué pour : {grey}{0}",
+
 	"sa_player_penalty_info_active_mute": "➔ Muet [{lightred}❌{default}] - Expire [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_gag": "➔ Gag [{lightred}❌{default}] - Expire [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_silence": "➔ Silence [{lightred}❌{default}] - Expire [{lightred}{0}{default}]",
@@ -76,6 +78,7 @@
 
 	"sa_player_penalty_info": "===========================\nPénalités du joueur pour {lightred}{0}{default},\nNombre de bannissements: {lightred}{1}{default}, Nombre de gag: {lightred}{2}{default}, Nombre de mutes: {lightred}{3}{default}, Nombre de silences: {lightred}{4}{default}, Nombre d’avertissements: {lightred}{5}{default}\nPénalités actives:\n{6}\nAvertissements actifs:\n{7}\n===========================",
 	"sa_admin_penalty_info": "{grey}Pénalités du joueur pour {lightred}{0}{grey}, Bannissements: {lightred}{1}{grey}, Gags: {lightred}{2}{grey}, Mutes: {lightred}{3}{grey}, Silences: {lightred}{4}{grey}, Avertissements: {lightred}{5}",
+	"sa_admin_associated_accounts": "{grey}Comptes associés du joueur {lightred}{0}{grey} : {1}",
 	"sa_player_ban_message_time": "Vous avez été banni pour {lightred}{0}{default} pendant {lightred}{1}{default} minutes par {lightred}{2}{default}!",
 	"sa_player_ban_message_perm": "Vous avez été banni définitivement pour {lightred}{0}{default} par {lightred}{1}{default}!",
 	"sa_player_kick_message": "Vous avez été expulsé pour {lightred}{0}{default} par {lightred}{1}{default}!",
@@ -105,6 +108,7 @@
 	"sa_admin_gravity_message": "{lightred}{0}{default} a modifié la gravité de {lightred}{1}{default}!",
 	"sa_admin_money_message": "{lightred}{0}{default} a modifié l'argent de {lightred}{1}{default}!",
 	"sa_admin_god_message": "{lightred}{0}{default} a modifié le mode dieu de {lightred}{1}{default}!",
+	"sa_admin_resize_message": "{lightred}{0}{default} a changé la taille de {lightred}{1}{default}!",
 	"sa_admin_slay_message": "{lightred}{0}{default} a tué {lightred}{1}{default}!",
 	"sa_admin_slap_message": "{lightred}{0}{default} a giflé {lightred}{1}{default}!",
 	"sa_admin_changemap_message": "{lightred}{0}{default} a changé la carte pour {lightred}{1}{default}!",

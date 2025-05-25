@@ -10,21 +10,26 @@ namespace CS2_SimpleAdmin.Managers;
 
 internal class BanManager(Database.Database? database)
 {
-    public async Task BanPlayer(PlayerInfo player, PlayerInfo? issuer, string reason, int time = 0)
+    public async Task<int?> BanPlayer(PlayerInfo player, PlayerInfo? issuer, string reason, int time = 0)
     {
-        if (database == null) return;
-        
+        if (database == null) return null;
+
         DateTime now = Time.ActualDateTime();
         DateTime futureTime = now.AddMinutes(time);
 
         await using MySqlConnection connection = await database.GetConnectionAsync();
         try
         {
-            const string sql =
-                "INSERT INTO `sa_bans` (`player_steamid`, `player_name`, `player_ip`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`) " +
-                               "VALUES (@playerSteamid, @playerName, @playerIp, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid)";
+            const string sql = """
+                               
+                                           INSERT INTO `sa_bans` 
+                                           (`player_steamid`, `player_name`, `player_ip`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`) 
+                                           VALUES 
+                                           (@playerSteamid, @playerName, @playerIp, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid);
+                                           SELECT LAST_INSERT_ID();
+                               """;
 
-            await connection.ExecuteAsync(sql, new
+            var banId = await connection.ExecuteScalarAsync<int?>(sql, new
             {
                 playerSteamid = player.SteamId.SteamId64.ToString(),
                 playerName = player.Name,
@@ -37,15 +42,19 @@ internal class BanManager(Database.Database? database)
                 created = now,
                 serverid = CS2_SimpleAdmin.ServerId
             });
+
+            return banId;
         }
-        catch { }
+        catch
+        {
+            return null;
+        }
     }
 
-    public async Task AddBanBySteamid(string playerSteamId, PlayerInfo? issuer, string reason, int time = 0)
+    public async Task<int?> AddBanBySteamid(string playerSteamId, PlayerInfo? issuer, string reason, int time = 0)
     {
-        if (database == null) return;
-
-        if (string.IsNullOrEmpty(playerSteamId)) return;
+        if (database == null) return null;
+        if (string.IsNullOrEmpty(playerSteamId)) return null;
 
         DateTime now = Time.ActualDateTime();
         DateTime futureTime = now.AddMinutes(time);
@@ -54,10 +63,16 @@ internal class BanManager(Database.Database? database)
         {
             await using MySqlConnection connection = await database.GetConnectionAsync();
 
-            var sql = "INSERT INTO `sa_bans` (`player_steamid`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`) " +
-                "VALUES (@playerSteamid, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid)";
+            const string sql = """
+                               
+                                           INSERT INTO `sa_bans` 
+                                           (`player_steamid`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`) 
+                                           VALUES 
+                                           (@playerSteamid, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid);
+                                           SELECT LAST_INSERT_ID();
+                               """;
 
-            await connection.ExecuteAsync(sql, new
+            var banId = await connection.ExecuteScalarAsync<int?>(sql, new
             {
                 playerSteamid = playerSteamId,
                 adminSteamid = issuer?.SteamId.SteamId64.ToString() ?? CS2_SimpleAdmin._localizer?["sa_console"] ?? "Console",
@@ -68,8 +83,13 @@ internal class BanManager(Database.Database? database)
                 created = now,
                 serverid = CS2_SimpleAdmin.ServerId
             });
+            
+            return banId;
         }
-        catch { }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     public async Task AddBanByIp(string playerIp, PlayerInfo? issuer, string reason, int time = 0)
@@ -123,7 +143,11 @@ internal class BanManager(Database.Database? database)
 
         try
         {
-            var sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
+            string sql;
+            
+            if (CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp && !CS2_SimpleAdmin.Instance.Config.OtherSettings.IgnoredIps.Contains(player.IpAddress))
+            {
+                sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
                                                                             SELECT COALESCE((
                                                                                 SELECT COUNT(*)
                                                                                 FROM sa_bans
@@ -172,14 +196,44 @@ internal class BanManager(Database.Database? database)
                                                                                       )
                                                                                   ), 0) AS TotalBanCount;
                                                                               """;
-
+            }
+            else
+            {
+                sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
+                                                                            UPDATE sa_bans
+                                                                            SET player_ip = CASE WHEN player_ip IS NULL THEN @PlayerIP ELSE player_ip END,
+                                                                                player_name = CASE WHEN player_name IS NULL THEN @PlayerName ELSE player_name END
+                                                                            WHERE (player_steamid = @PlayerSteamID OR player_ip = @PlayerIP)
+                                                                            AND status = 'ACTIVE'
+                                                                            AND (duration = 0 OR ends > @CurrentTime);
+                                                                        
+                                                                            SELECT COUNT(*) FROM sa_bans
+                                                                            WHERE (player_steamid = @PlayerSteamID OR player_ip = @PlayerIP)
+                                                                            AND status = 'ACTIVE'
+                                                                            AND (duration = 0 OR ends > @CurrentTime);
+                                                                        """ : """
+                                                                                  UPDATE sa_bans
+                                                                                  SET player_ip = CASE WHEN player_ip IS NULL THEN @PlayerIP ELSE player_ip END,
+                                                                                      player_name = CASE WHEN player_name IS NULL THEN @PlayerName ELSE player_name END
+                                                                                  WHERE (player_steamid = @PlayerSteamID OR player_ip = @PlayerIP)
+                                                                                  AND status = 'ACTIVE'
+                                                                                  AND (duration = 0 OR ends > @CurrentTime) AND server_id = @ServerId;
+                                                                              
+                                                                                  SELECT COUNT(*) FROM sa_bans
+                                                                                  WHERE (player_steamid = @PlayerSteamID OR player_ip = @PlayerIP)
+                                                                                  AND status = 'ACTIVE'
+                                                                                  AND (duration = 0 OR ends > @CurrentTime) AND server_id = @ServerId;
+                                                                              """;
+            }
+            
             await using var connection = await database.GetConnectionAsync();
 
             var parameters = new
             {
                 PlayerSteamID = player.SteamId.SteamId64.ToString(),
                 PlayerIP = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType == 0 ||
-                           string.IsNullOrEmpty(player.IpAddress)
+                           string.IsNullOrEmpty(player.IpAddress) ||
+                           CS2_SimpleAdmin.Instance.Config.OtherSettings.IgnoredIps.Contains(player.IpAddress)
                     ? null
                     : player.IpAddress,
                 PlayerName = !string.IsNullOrEmpty(player.Name) ? player.Name : string.Empty,
@@ -340,7 +394,7 @@ internal class BanManager(Database.Database? database)
                 {
                     SteamIDs = steamIds,
                     IpAddresses = checkIpBans ? ipAddresses : [],
-                    ServerId = CS2_SimpleAdmin.ServerId
+                    CS2_SimpleAdmin.ServerId
                 });
 
             var valueTuples = bannedPlayers.ToList();
@@ -350,7 +404,7 @@ internal class BanManager(Database.Database? database)
             foreach (var player in filteredPlayers.Where(player => bannedSteamIds.Contains(player.SteamID) ||
                                                                    (checkIpBans && bannedIps.Contains(player.IpAddress ?? ""))))
             {
-                if (!player.UserId.HasValue) continue;
+                if (!player.UserId.HasValue || CS2_SimpleAdmin.PlayersInfo[player.UserId.Value].WaitingForKick) continue;
 
                 await Server.NextFrameAsync(() =>
                 {

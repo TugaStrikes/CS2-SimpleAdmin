@@ -1,14 +1,15 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Menu;
 
 namespace CS2_SimpleAdmin.Menus;
 
 public static class AdminMenu
 {
-    public static IMenu? CreateMenu(string title)
+    public static IMenu? CreateMenu(string title, Action<CCSPlayerController>? backAction = null)
     {
-        return Helper.CreateMenu(title);
+        return Helper.CreateMenu(title, backAction);
         // return CS2_SimpleAdmin.Instance.Config.UseChatMenu ? new ChatMenu(title) : new CenterHtmlMenu(title, CS2_SimpleAdmin.Instance);
     }
 
@@ -32,7 +33,7 @@ public static class AdminMenu
             return;
 
         var localizer = CS2_SimpleAdmin._localizer;
-        if (AdminManager.PlayerHasPermissions(admin, "@css/generic") == false)
+        if (AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/generic") == false)
         {
             admin.PrintToChat(localizer?["sa_prefix"] ??
                               "[SimpleAdmin] " +
@@ -55,7 +56,7 @@ public static class AdminMenu
             options.Add(new ChatMenuOptionData(localizer?["sa_menu_custom_commands"] ?? "Custom Commands", () => CustomCommandsMenu.OpenMenu(admin)));
         }
 
-        if (AdminManager.PlayerHasPermissions(admin, "@css/root"))
+        if (AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/root"))
             options.Add(new ChatMenuOptionData(localizer?["sa_menu_admins_manage"] ?? "Admins Manage", () => ManageAdminsMenu.OpenMenu(admin)));
 
         foreach (var menuOptionData in options)

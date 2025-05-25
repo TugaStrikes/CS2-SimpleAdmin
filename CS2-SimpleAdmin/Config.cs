@@ -89,6 +89,17 @@ public class Discord
         new DiscordPenaltySetting { Name = "Footer", Value = "" },
         new DiscordPenaltySetting { Name = "Time", Value = "{relative}" },
     ];
+    
+    [JsonPropertyName("DiscordAssociatedAccountsSettings")]
+    public DiscordPenaltySetting[] DiscordAssociatedAccountsSettings { get; set; } =
+    [
+        new DiscordPenaltySetting { Name = "Color", Value = "" },
+        new DiscordPenaltySetting { Name = "Webhook", Value = "" },
+        new DiscordPenaltySetting { Name = "ThumbnailUrl", Value = "" },
+        new DiscordPenaltySetting { Name = "ImageUrl", Value = "" },
+        new DiscordPenaltySetting { Name = "Footer", Value = "" },
+        new DiscordPenaltySetting { Name = "Time", Value = "{relative}" },
+    ];
 }
 
 public class CustomServerCommandData
@@ -224,11 +235,19 @@ public class OtherSettings
     
     [JsonPropertyName("UserMessageGagChatType")]
     public bool UserMessageGagChatType { get; set; } = false;
+    
+    [JsonPropertyName("CheckMultiAccountsByIp")]
+    public bool CheckMultiAccountsByIp { get; set; } = true;
+
+    [JsonPropertyName("AdditionalCommandsToLog")]
+    public List<string> AdditionalCommandsToLog { get; set; } = new();
+    [JsonPropertyName("IgnoredIps")]
+    public List<string> IgnoredIps { get; set; } = new();
 }
 
 public class CS2_SimpleAdminConfig : BasePluginConfig
 {
-    [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 23;
+    [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 24;
 
     [JsonPropertyName("DatabaseHost")]
     public string DatabaseHost { get; set; } = "";
@@ -244,6 +263,9 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
 
     [JsonPropertyName("DatabaseName")]
     public string DatabaseName { get; set; } = "";
+    
+    [JsonPropertyName("DatabaseSSlMode")]
+    public string DatabaseSSlMode { get; set; } = "preferred";
 
     [JsonPropertyName("OtherSettings")]
     public OtherSettings OtherSettings { get; set; } = new();

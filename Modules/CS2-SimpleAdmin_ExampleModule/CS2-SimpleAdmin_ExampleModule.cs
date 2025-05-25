@@ -12,7 +12,7 @@ namespace CS2_SimpleAdmin_ExampleModule;
 public class CS2_SimpleAdmin_ExampleModule: BasePlugin
 {
     public override string ModuleName => "[CS2-SimpleAdmin] Example module";
-    public override string ModuleVersion => "v1.0.0";
+    public override string ModuleVersion => "v1.0.1";
     public override string ModuleAuthor => "daffyy";
 
     private int? _serverId;
@@ -68,9 +68,16 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
         commandInfo.ReplyToCommand($"Your total mutes: {playerInfo?.TotalMutes}");
         commandInfo.ReplyToCommand($"Your total silences: {playerInfo?.SteamId}");
     }
+    
+    [ConsoleCommand("css_testaddban")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnAddBanCommand(CCSPlayerController? caller, CommandInfo commandInfo)
+    {
+        _sharedApi?.IssuePenalty(new SteamID(76561197960287930), null, PenaltyType.Ban, "My super reason", 10);
+    }
 
     private void OnPlayerPenaltied(PlayerInfo player, PlayerInfo? admin, PenaltyType penaltyType,
-        string reason, int duration, int? serverId)
+        string reason, int duration, int? penaltyId, int? serverId)
     {
         if (penaltyType == PenaltyType.Ban)
         {
@@ -82,6 +89,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             case PenaltyType.Ban:
             {
                 Logger.LogInformation("Ban issued");
+                Logger.LogInformation($"Id = {penaltyId}");
                 break;
             }
             case PenaltyType.Kick:
@@ -92,6 +100,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             case PenaltyType.Gag:
             {
                 Logger.LogInformation("Gag issued");
+                Logger.LogInformation($"Id = {penaltyId}");
                 break;
             }
             case PenaltyType.Mute:
@@ -120,13 +129,14 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
     }
     
     private void OnPlayerPenaltiedAdded(SteamID steamId, PlayerInfo? admin, PenaltyType penaltyType,
-        string reason, int duration, int? serverId)
+        string reason, int duration, int? penaltyId, int? serverId)
     {
         switch (penaltyType)
         {
             case PenaltyType.Ban:
             {
                 Logger.LogInformation("Ban added");
+                Logger.LogInformation($"Id = {penaltyId}");
                 break;
             }
             case PenaltyType.Kick:
@@ -137,6 +147,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             case PenaltyType.Gag:
             {
                 Logger.LogInformation("Gag added");
+                Logger.LogInformation($"Id = {penaltyId}");
                 break;
             }
             case PenaltyType.Mute:

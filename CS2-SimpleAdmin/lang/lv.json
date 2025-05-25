@@ -64,6 +64,8 @@
 	"sa_discord_penalty_warn": "Brīdinājums reģistrēts",
 	"sa_discord_penalty_unknown": "Nezināms reģistrēts",
 
+	"sa_player_penalty_chat_active": "{lightred}Jūsu čats ir bloķēts uz: {grey}{0}",
+
 	"sa_player_penalty_info_active_mute": "➔ Izslēgts [{lightred}❌{default}] - Beidzas [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_gag": "➔ Klusums [{lightred}❌{default}] - Beidzas [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_silence": "➔ Klusēšana [{lightred}❌{default}] - Beidzas [{lightred}{0}{default}]",
@@ -76,6 +78,7 @@
 
 	"sa_player_penalty_info": "===========================\nSpēlētāja sods priekš {lightred}{0}{default},\nAizliegumu skaits: {lightred}{1}{default}, Klusumu skaits: {lightred}{2}{default}, Izslēgšanas skaits: {lightred}{3}{default}, Klusēšanas skaits: {lightred}{4}{default}, Brīdinājumu skaits: {lightred}{5}{default}\nAktīvie sodi:\n{6}\nAktīvie brīdinājumi:\n{7}\n===========================",
 	"sa_admin_penalty_info": "{grey}Spēlētāja sods priekš {lightred}{0}{grey}, Aizliegumi: {lightred}{1}{grey}, Klusumi: {lightred}{2}{grey}, Izslēgšana: {lightred}{3}{grey}, Klusēšana: {lightred}{4}{grey}, Brīdinājumi: {lightred}{5}",
+	"sa_admin_associated_accounts": "{grey}Spēlētāja {lightred}{0}{grey} saistītie konti: {1}",
 	"sa_player_ban_message_time": "Tu esi nobanots uz {lightred}{0}{default} uz {lightred}{1}{default} minūtēm, iemesls: {lightred}{2}{default}!",
 	"sa_player_ban_message_perm": "Tevis bans ir uz mūžu, iemesls: {lightred}{0}{default}, Admins: {lightred}{1}{default}!",
 	"sa_player_kick_message": "Tu esi izmests, iemesls: {lightred}{0}{default}, Admins: {lightred}{1}{default}!",
@@ -105,6 +108,7 @@
 	"sa_admin_gravity_message": "{lightred}{0}{default} mainīja {lightred}{1}{default} gravitāciju!",
 	"sa_admin_money_message": "{lightred}{0}{default} mainīja {lightred}{1}{default} naudu!",
 	"sa_admin_god_message": "{lightred}{0}{default} mainīja dieva režīmu priekš {lightred}{1}{default}!",
+	"sa_admin_resize_message": "{lightred}{0}{default} mainīja izmēru {lightred}{1}{default}!",
 	"sa_admin_slay_message": "{lightred}{0}{default} nogalināja {lightred}{1}{default}!",
 	"sa_admin_slap_message": "{lightred}{0}{default} iedeva {lightred}{1}{default} pa seju!",
 	"sa_admin_changemap_message": "{lightred}{0}{default} mainīja karti uz {lightred}{1}{default}!",

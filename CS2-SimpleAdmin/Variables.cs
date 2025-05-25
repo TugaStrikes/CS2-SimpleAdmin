@@ -32,16 +32,15 @@ public partial class CS2_SimpleAdmin
     // Command and Server Settings
     public static readonly bool UnlockedCommands = CoreConfig.UnlockConCommands;
     internal static string IpAddress = string.Empty;
-    public static bool ServerLoaded;
-    public static int? ServerId = null;
+    internal static bool ServerLoaded;
+    internal static int? ServerId = null;
     internal static readonly HashSet<ulong> AdminDisabledJoinComms = [];
 
     // Player Management
     private static readonly HashSet<int> GodPlayers = [];
-    private static readonly HashSet<int> SilentPlayers = [];
-    internal static readonly ConcurrentBag<string?> BannedPlayers = [];
+    internal static readonly HashSet<int> SilentPlayers = [];
     internal static readonly Dictionary<ulong, string> RenamedPlayers = [];
-    internal static readonly Dictionary<int, PlayerInfo> PlayersInfo = [];
+    internal static readonly ConcurrentDictionary<int, PlayerInfo> PlayersInfo = [];
     private static readonly List<DisconnectedPlayer> DisconnectedPlayers = [];
 
     // Discord Integration
@@ -62,11 +61,12 @@ public partial class CS2_SimpleAdmin
     private static readonly PluginCapability<IMenuApi> MenuCapability = new("menu:nfcore");
 
     // Shared API
-    private Api.CS2_SimpleAdminApi? SimpleAdminApi { get; set; }
+    internal static Api.CS2_SimpleAdminApi? SimpleAdminApi { get; set; }
     
     // Managers
     internal PermissionManager PermissionManager = new(Database);
     internal BanManager BanManager = new(Database);
     internal MuteManager MuteManager = new(Database);
     internal WarnManager WarnManager = new(Database);
+    internal CacheManager? CacheManager = new();
 }

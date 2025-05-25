@@ -32,7 +32,16 @@ public static class PlayerExtensions
 
         return AdminManager.CanPlayerTarget(controller, target) ||
                                   AdminManager.CanPlayerTarget(new SteamID(controller.SteamID),
-                                      new SteamID(target.SteamID));
+                                      new SteamID(target.SteamID)) || 
+                                      AdminManager.GetPlayerImmunity(controller) >= AdminManager.GetPlayerImmunity(target);
+    }
+
+    public static bool CanTarget(this CCSPlayerController? controller, SteamID steamId)
+    {
+        if (controller is null) return true;
+
+        return AdminManager.CanPlayerTarget(new SteamID(controller.SteamID), steamId) || 
+               AdminManager.GetPlayerImmunity(controller) >= AdminManager.GetPlayerImmunity(steamId);
     }
 
     public static void SetSpeed(this CCSPlayerController? controller, float speed)
@@ -64,7 +73,7 @@ public static class PlayerExtensions
     public static void SetHp(this CCSPlayerController? controller, int health = 100)
     {
         if (controller == null) return;
-        if ((health <= 0 || !controller.PawnIsAlive || controller.PlayerPawn.Value == null)) return;
+        if (health <= 0 || controller.PlayerPawn.Value == null ||  controller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE) return;
 
         controller.PlayerPawn.Value.Health = health;
 

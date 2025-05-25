@@ -11,7 +11,7 @@ using MySqlConnector;
 
 namespace CS2_SimpleAdmin;
 
-[MinimumApiVersion(279)]
+[MinimumApiVersion(300)]
 public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdminConfig>
 {
     internal static CS2_SimpleAdmin Instance { get; private set; } = new();
@@ -19,7 +19,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
     public override string ModuleAuthor => "daffyy & Dliix66";
-    public override string ModuleVersion => "1.6.7a";
+    public override string ModuleVersion => "1.7.7-alpha";
     
     public override void Load(bool hotReload)
     {
@@ -30,18 +30,22 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         if (hotReload)
         {
             ServerLoaded = false;
+            _serverLoading = false;
+            
+            CacheManager = new CacheManager();
             OnGameServerSteamAPIActivated();
             OnMapStart(string.Empty);
 
             AddTimer(2.0f, () =>
             {
                 if (Database == null) return;
+                
+                var playerManager = new PlayerManager();
 
-                Helper.GetValidPlayers().ForEach(player =>
+                foreach (var player in Helper.GetValidPlayers()) 
                 {
-                    var playerManager = new PlayerManager();
                     playerManager.LoadPlayerData(player);
-                });
+                };
             });
         }
         _cBasePlayerControllerSetPawnFunc = new MemoryFunctionVoid<CBasePlayerController, CCSPlayerPawn, bool, bool>(GameData.GetSignature("CBasePlayerController_SetPawn"));
@@ -54,11 +58,16 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        AddTimer(3.0f, () => ReloadAdmins(null));
+        AddTimer(5.0f, () => ReloadAdmins(null));
 
-        MenuApi = MenuCapability.Get();
-        if (MenuApi == null)
-            Logger.LogError("MenuManager Core not found...");
+        try
+        {
+            MenuApi = MenuCapability.Get();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Unable to load required plugins ... \n{exception}", ex.Message);
+        }
         
         RegisterCommands.InitializeCommands();
     }
@@ -80,6 +89,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
             UserID = config.DatabaseUser,
             Password = config.DatabasePassword,
             Port = (uint)config.DatabasePort,
+            SslMode = Enum.TryParse(config.DatabaseSSlMode, true, out MySqlSslMode sslMode) ? sslMode : MySqlSslMode.Preferred,
             Pooling = true,
             MinimumPoolSize = 0,
             MaximumPoolSize = 640,
@@ -87,10 +97,12 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         DbConnectionString = builder.ConnectionString;
         Database = new Database.Database(DbConnectionString);
-
-        if (!Database.CheckDatabaseConnection())
+        
+        if (!Database.CheckDatabaseConnection(out var exception))
         {
-            Logger.LogError("Unable connect to database!");
+            if (exception != null)
+                Logger.LogError("Problem with database connection! \n{exception}", exception);
+            
             Unload(false);
             return;
         }
@@ -138,5 +150,11 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         command.ReplyToCommand($"Multiple targets found for \"{command.GetArg(1)}\".");
         return null;
+    }
+
+    public override void Unload(bool hotReload)
+    {
+        CacheManager?.Dispose();
+        CacheManager = null;
     }
 }

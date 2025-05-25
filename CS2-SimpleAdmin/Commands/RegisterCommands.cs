@@ -34,6 +34,7 @@ public static class RegisterCommands
         new CommandMapping("css_addgroup", CS2_SimpleAdmin.Instance.OnAddGroup),
         new CommandMapping("css_delgroup", CS2_SimpleAdmin.Instance.OnDelGroupCommand),
         new CommandMapping("css_reloadadmins", CS2_SimpleAdmin.Instance.OnRelAdminCommand),
+        new CommandMapping("css_reloadbans", CS2_SimpleAdmin.Instance.OnRelBans),
         new CommandMapping("css_hide", CS2_SimpleAdmin.Instance.OnHideCommand),
         new CommandMapping("css_hidecomms", CS2_SimpleAdmin.Instance.OnHideCommsCommand),
         new CommandMapping("css_who", CS2_SimpleAdmin.Instance.OnWhoCommand),
@@ -71,6 +72,7 @@ public static class RegisterCommands
         new CommandMapping("css_hp", CS2_SimpleAdmin.Instance.OnHpCommand),
         new CommandMapping("css_speed", CS2_SimpleAdmin.Instance.OnSpeedCommand),
         new CommandMapping("css_gravity", CS2_SimpleAdmin.Instance.OnGravityCommand),
+        new CommandMapping("css_resize", CS2_SimpleAdmin.Instance.OnResizeCommand),
         new CommandMapping("css_money", CS2_SimpleAdmin.Instance.OnMoneyCommand),
         new CommandMapping("css_team", CS2_SimpleAdmin.Instance.OnTeamCommand),
         new CommandMapping("css_rename", CS2_SimpleAdmin.Instance.OnRenameCommand),
@@ -78,7 +80,8 @@ public static class RegisterCommands
         new CommandMapping("css_respawn", CS2_SimpleAdmin.Instance.OnRespawnCommand),
         new CommandMapping("css_tp", CS2_SimpleAdmin.Instance.OnGotoCommand),
         new CommandMapping("css_bring", CS2_SimpleAdmin.Instance.OnBringCommand),
-        new CommandMapping("css_pluginsmanager", CS2_SimpleAdmin.Instance.OnPluginManagerCommand)
+        new CommandMapping("css_pluginsmanager", CS2_SimpleAdmin.Instance.OnPluginManagerCommand),
+        new CommandMapping("css_adminvoice", CS2_SimpleAdmin.Instance.OnAdminVoiceCommand)
     ];
 
     public static void InitializeCommands()
@@ -120,6 +123,7 @@ public static class RegisterCommands
                 { "css_addgroup", new Command { Aliases = ["css_addgroup"] } },
                 { "css_delgroup", new Command { Aliases = ["css_delgroup"] } },
                 { "css_reloadadmins", new Command { Aliases = ["css_reloadadmins"] } },
+                { "css_reloadbans", new Command { Aliases = ["css_reloadbans"] } },
                 { "css_hide", new Command { Aliases = ["css_hide", "css_stealth"] } },
                 { "css_hidecomms", new Command { Aliases = ["css_hidecomms"] } },
                 { "css_who", new Command { Aliases = ["css_who"] } },
@@ -153,6 +157,7 @@ public static class RegisterCommands
                 { "css_hp", new Command { Aliases = ["css_hp"] } },
                 { "css_speed", new Command { Aliases = ["css_speed"] } },
                 { "css_gravity", new Command { Aliases = ["css_gravity"] } },
+                { "css_resize", new Command { Aliases = ["css_resize", "css_size"] } },
                 { "css_money", new Command { Aliases = ["css_money"] } },
                 { "css_team", new Command { Aliases = ["css_team"] } },
                 { "css_rename", new Command { Aliases = ["css_rename"] } },
@@ -160,7 +165,8 @@ public static class RegisterCommands
                 { "css_respawn", new Command { Aliases = ["css_respawn"] } },
                 { "css_tp", new Command { Aliases = ["css_tp", "css_tpto", "css_goto"] } },
                 { "css_bring", new Command { Aliases = ["css_bring", "css_tphere"] } },
-                { "css_pluginsmanager", new Command { Aliases = ["css_pluginsmanager", "css_pluginmanager"] } }
+                { "css_pluginsmanager", new Command { Aliases = ["css_pluginsmanager", "css_pluginmanager"] } },
+                { "css_adminvoice", new Command { Aliases = ["css_adminvoice", "css_listenall"] } }
             }
         };
         

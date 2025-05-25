@@ -64,6 +64,8 @@
 	"sa_discord_penalty_warn": "هشدار ثبت شد",
 	"sa_discord_penalty_unknown": "ناشناخته انجام شده",
 
+	"sa_player_penalty_chat_active": "{lightred}چت شما برای: {grey}{0} مسدود شده است",
+
 	"sa_player_penalty_info_active_mute": "➔ بی‌صدا [{lightred}❌{default}] - منقضی شدن [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_gag": "➔ مسدود کردن صدا [{lightred}❌{default}] - منقضی شدن [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_silence": "➔ سکوت [{lightred}❌{default}] - منقضی شدن [{lightred}{0}{default}]",
@@ -76,6 +78,7 @@
 
 	"sa_player_penalty_info": "===========================\nتنبیهات بازیکن برای {lightred}{0}{default},\nتعداد مسدودیت‌ها: {lightred}{1}{default}, تعداد سکوت‌ها: {lightred}{2}{default}, تعداد بی‌صدا کردن‌ها: {lightred}{3}{default}, تعداد سکوت‌ها: {lightred}{4}{default}, تعداد هشدارها: {lightred}{5}{default}\nتنبیهات فعال:\n{6}\nهشدارهای فعال:\n{7}\n===========================",
 	"sa_admin_penalty_info": "{grey}تنبیهات بازیکن برای {lightred}{0}{grey}, مسدودیت‌ها: {lightred}{1}{grey}, سکوت‌ها: {lightred}{2}{grey}, بی‌صدا کردن‌ها: {lightred}{3}{grey}, سکوت‌ها: {lightred}{4}{grey}, هشدارها: {lightred}{5}",
+	"sa_admin_associated_accounts": "{grey}حساب‌های مرتبط با بازیکن {lightred}{0}{grey}: {1}",
 	"sa_player_ban_message_time": "شما توسط {lightred}{2}{default} برای {lightred}{1}{default} دقیقه به دلیل {lightred}{0}{default} مسدود شده‌اید!",
 	"sa_player_ban_message_perm": "شما توسط {lightred}{1}{default} به دلیل {lightred}{0}{default} برای همیشه مسدود شده‌اید!",
 	"sa_player_kick_message": "شما توسط {lightred}{1}{default} به دلیل {lightred}{0}{default} اخراج شده‌اید!",
@@ -105,6 +108,7 @@
 	"sa_admin_gravity_message": "{lightred}{0}{default} جاذبه {lightred}{1}{default} را تغییر داد!",
 	"sa_admin_money_message": "{lightred}{0}{default} پول {lightred}{1}{default} را تغییر داد!",
 	"sa_admin_god_message": "{lightred}{0}{default} حالت خدا را برای {lightred}{1}{default} تغییر داد!",
+	"sa_admin_resize_message": "{lightred}{0}{default} اندازه {lightred}{1}{default} را تغییر داد!",
 	"sa_admin_slay_message": "{lightred}{0}{default} {lightred}{1}{default} را کشت!",
 	"sa_admin_slap_message": "{lightred}{0}{default} به {lightred}{1}{default} سیلی زد!",
 	"sa_admin_changemap_message": "{lightred}{0}{default} نقشه را به {lightred}{1}{default} تغییر داد!",

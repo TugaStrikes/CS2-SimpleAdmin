@@ -64,6 +64,8 @@
 	"sa_discord_penalty_warn": "Uyarı kaydedildi",
 	"sa_discord_penalty_unknown": "Bilinmeyen kaydedildi",
 
+	"sa_player_penalty_chat_active": "{lightred}Sohbetiniz şu kişiye engellendi: {grey}{0}",
+
 	"sa_player_penalty_info_active_mute": "➔ Mute [{lightred}❌{default}] - Süre Dolacak [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_gag": "➔ Gag [{lightred}❌{default}] - Süre Dolacak [{lightred}{0}{default}]",
 	"sa_player_penalty_info_active_silence": "➔ Sessizlik [{lightred}❌{default}] - Süre Dolacak [{lightred}{0}{default}]",
@@ -76,6 +78,7 @@
 
 	"sa_player_penalty_info": "===========================\nOyuncunun cezaları {lightred}{0}{default} için,\nBan sayısı: {lightred}{1}{default}, Gag sayısı: {lightred}{2}{default}, Mute sayısı: {lightred}{3}{default}, Sessizlik sayısı: {lightred}{4}{default}, Uyarı sayısı: {lightred}{5}{default}\nAktif cezalar:\n{6}\nAktif uyarılar:\n{7}\n===========================",
 	"sa_admin_penalty_info": "{grey}Oyuncunun cezaları {lightred}{0}{grey}, Banlar: {lightred}{1}{grey}, Gaglar: {lightred}{2}{grey}, Mute'lar: {lightred}{3}{grey}, Sessizlikler: {lightred}{4}{grey}, Uyarılar: {lightred}{5}",
+	"sa_admin_associated_accounts": "{grey}{lightred}{0}{grey} oyuncusunun bağlı hesapları: {1}",
 	"sa_player_ban_message_time": "Senaryo nedeniyle {lightred}{0}{default} dakika boyunca {lightred}{1}{default} tarafından yasaklandınız!",
 	"sa_player_ban_message_perm": "Senaryo nedeniyle kalıcı olarak {lightred}{0}{default} tarafından yasaklandınız!",
 	"sa_player_kick_message": "Senaryo nedeniyle {lightred}{0}{default} tarafından atıldınız!",
@@ -105,6 +108,7 @@
 	"sa_admin_gravity_message": "{lightred}{0}{default} {lightred}{1}{default}'in yer çekimini değiştirdi!",
 	"sa_admin_money_message": "{lightred}{0}{default} {lightred}{1}{default}'in parasını değiştirdi!",
 	"sa_admin_god_message": "{lightred}{0}{default} {lightred}{1}{default}'in tanrı modunu değiştirdi!",
+	"sa_admin_resize_message": "{lightred}{0}{default} boyutu {lightred}{1}{default} için değiştirdi!",
 	"sa_admin_slay_message": "{lightred}{0}{default} {lightred}{1}{default}'i öldürdü!",
 	"sa_admin_slap_message": "{lightred}{0}{default} {lightred}{1}{default}'e tokat attı!",
 	"sa_admin_changemap_message": "{lightred}{0}{default} haritayı {lightred}{1}{default} olarak değiştirdi!",

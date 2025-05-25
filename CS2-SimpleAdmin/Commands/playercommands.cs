@@ -1,4 +1,5 @@
 using System.Globalization;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -21,12 +22,14 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is {IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
             Slay(caller, player, callerName, command);
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void Slay(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
@@ -48,14 +51,12 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
 
         // Log the command and send Discord notification
         if (command == null)
             Helper.LogCommand(caller, $"css_slay {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)}");
-        else
-            Helper.LogCommand(caller, command);
     }
 
     [RequiresPermissions("@css/cheats")]
@@ -66,7 +67,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
         var weaponName = command.GetArg(2);
 
         // check if item is typed
@@ -93,6 +94,8 @@ public partial class CS2_SimpleAdmin
 
             GiveWeapon(caller, player, weaponName, callerName, command);
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     private static void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null, CommandInfo? command = null)
@@ -121,8 +124,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_giveweapon {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {weaponName}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the weapon give notification
         var (activityMessageKey, adminActivityArgs) =
@@ -132,7 +133,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -149,8 +150,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_giveweapon {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {weapon.ToString()}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the weapon give notification
         var (activityMessageKey, adminActivityArgs) =
@@ -160,7 +159,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -172,7 +171,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -181,6 +180,8 @@ public partial class CS2_SimpleAdmin
                 StripWeapons(caller, player, callerName, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void StripWeapons(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
@@ -191,7 +192,7 @@ public partial class CS2_SimpleAdmin
         callerName ??= caller != null ? caller.PlayerName : _localizer?["sa_console"] ?? "Console";
 
         // Check if player is valid, alive, and connected
-        if (!player.IsValid || !player.PawnIsAlive || player.Connected != PlayerConnectedState.PlayerConnected)
+        if (!player.IsValid || player.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE || player.Connected != PlayerConnectedState.PlayerConnected)
             return;
 
         // Strip weapons from the player
@@ -200,8 +201,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_strip {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the weapon strip notification
         var (activityMessageKey, adminActivityArgs) =
@@ -211,7 +210,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -224,7 +223,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -233,6 +232,8 @@ public partial class CS2_SimpleAdmin
                 SetHp(caller, player, health, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void SetHp(CCSPlayerController? caller, CCSPlayerController player, int health, CommandInfo? command = null)
@@ -249,8 +250,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_hp {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {health}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the HP set notification
         var (activityMessageKey, adminActivityArgs) =
@@ -260,7 +259,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -273,7 +272,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -285,6 +284,8 @@ public partial class CS2_SimpleAdmin
                 SetSpeed(caller, player, speed, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void SetSpeed(CCSPlayerController? caller, CCSPlayerController player, float speed, CommandInfo? command = null)
@@ -305,8 +306,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_speed {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {speed}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the speed set notification
         var (activityMessageKey, adminActivityArgs) =
@@ -316,7 +315,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -329,7 +328,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -341,6 +340,8 @@ public partial class CS2_SimpleAdmin
                 SetGravity(caller, player, gravity, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void SetGravity(CCSPlayerController? caller, CCSPlayerController player, float gravity, CommandInfo? command = null)
@@ -361,8 +362,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_gravity {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {gravity}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the gravity set notification
         var (activityMessageKey, adminActivityArgs) =
@@ -372,7 +371,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -386,7 +385,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -398,6 +397,8 @@ public partial class CS2_SimpleAdmin
                 SetMoney(caller, player, money, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void SetMoney(CCSPlayerController? caller, CCSPlayerController player, int money, CommandInfo? command = null)
@@ -413,8 +414,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_money {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {money}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message keys and arguments for the money set notification
         var (activityMessageKey, adminActivityArgs) =
@@ -424,7 +423,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller == null || !SilentPlayers.Contains(caller.Slot))
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -437,7 +436,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         if (command.ArgCount >= 2)
         {
@@ -454,6 +453,8 @@ public partial class CS2_SimpleAdmin
                 Slap(caller, player, damage, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void Slap(CCSPlayerController? caller, CCSPlayerController player, int damage, CommandInfo? command = null)
@@ -469,9 +470,7 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_slap {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {damage}");
-        else
-            Helper.LogCommand(caller, command);
-
+        
         // Determine message key and arguments for the slap notification
         var (activityMessageKey, adminActivityArgs) =
             ("sa_admin_slap_message",
@@ -482,7 +481,7 @@ public partial class CS2_SimpleAdmin
 
         if (_localizer != null)
         {
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
         }
     }
 
@@ -531,6 +530,8 @@ public partial class CS2_SimpleAdmin
         {
             ChangeTeam(caller, player, _teamName, teamNum, kill, command);
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void ChangeTeam(CCSPlayerController? caller, CCSPlayerController player, string teamName, CsTeam teamNum, bool kill, CommandInfo? command = null)
@@ -548,7 +549,7 @@ public partial class CS2_SimpleAdmin
         // Change team based on the provided teamName and conditions
         if (!teamName.Equals("swap", StringComparison.OrdinalIgnoreCase))
         {
-            if (player.PawnIsAlive && teamNum != CsTeam.Spectator && !kill && Instance.Config.OtherSettings.TeamSwitchType == 1)
+            if (player.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && teamNum != CsTeam.Spectator && !kill && Instance.Config.OtherSettings.TeamSwitchType == 1)
                 player.SwitchTeam(teamNum);
             else
                 player.ChangeTeam(teamNum);
@@ -559,7 +560,7 @@ public partial class CS2_SimpleAdmin
             {
                 var _teamNum = (CsTeam)player.TeamNum == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
                 teamName = _teamNum == CsTeam.Terrorist ? "TT" : "CT";
-                if (player.PawnIsAlive && !kill && Instance.Config.OtherSettings.TeamSwitchType == 1)
+                if (player.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && !kill && Instance.Config.OtherSettings.TeamSwitchType == 1)
                     player.SwitchTeam(_teamNum);
                 else
                     player.ChangeTeam(_teamNum);
@@ -569,8 +570,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_team {player.PlayerName} {teamName}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message key and arguments for the team change notification
         var activityMessageKey = "sa_admin_team_message";
@@ -579,7 +578,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
 
-        Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+        Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
     }
 
     [CommandHelper(1, "<#userid or name> <new name>")]
@@ -620,7 +619,7 @@ public partial class CS2_SimpleAdmin
             // Display admin activity message to other players
             if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
 
-            Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+            Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
             
             // Rename the player
             player.Rename(newName);
@@ -661,7 +660,7 @@ public partial class CS2_SimpleAdmin
             // Display admin activity message to other players
             if (caller != null && !SilentPlayers.Contains(caller.Slot))
             {
-                Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+                Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
             }
             
             // Determine if the new name is valid and update the renamed players list
@@ -697,6 +696,8 @@ public partial class CS2_SimpleAdmin
                 Respawn(caller, player, callerName, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     internal static void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
@@ -721,8 +722,6 @@ public partial class CS2_SimpleAdmin
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_respawn {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)}");
-        else
-            Helper.LogCommand(caller, command);
 
         // Determine message key and arguments for the respawn notification
         var activityMessageKey = "sa_admin_respawn_message";
@@ -731,7 +730,7 @@ public partial class CS2_SimpleAdmin
         // Display admin activity message to other players
         if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
 
-        Helper.ShowAdminActivity(activityMessageKey, callerName, adminActivityArgs);
+        Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
     }
 
     [CommandHelper(1, "<#userid or name>")]
@@ -739,7 +738,7 @@ public partial class CS2_SimpleAdmin
     public void OnGotoCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
-        if (caller == null || !caller.PawnIsAlive) return;
+        if (caller == null || caller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE) return;
 
         // Get the target players
         var targets = GetTarget(command);
@@ -753,17 +752,45 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
 
         // Process each player to teleport
-        foreach (var player in playersToTarget.Where(player => player is { Connected: PlayerConnectedState.PlayerConnected, PawnIsAlive: true }).Where(caller.CanTarget))
+        foreach (var player in playersToTarget.Where(player => player is { Connected: PlayerConnectedState.PlayerConnected, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).Where(caller.CanTarget))
         {
-            if (caller.PlayerPawn.Value == null)
+            if (caller.PlayerPawn.Value == null || player.PlayerPawn.Value == null)
                 continue;
 
             // Teleport the caller to the player and toggle noclip
             caller.TeleportPlayer(player);
-            caller.PlayerPawn.Value.ToggleNoclip();
+            // caller.PlayerPawn.Value.ToggleNoclip();
 
-            // Set a timer to toggle noclip back after 3 seconds
-            AddTimer(3, () => caller.PlayerPawn.Value.ToggleNoclip());
+            caller.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            caller.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            
+            Utilities.SetStateChanged(caller, "CCollisionProperty", "m_CollisionGroup");
+            Utilities.SetStateChanged(caller, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+            
+            player.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            player.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            
+            Utilities.SetStateChanged(player, "CCollisionProperty", "m_CollisionGroup");
+            Utilities.SetStateChanged(player, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+
+            // Set a timer to toggle collision back after 4 seconds
+            AddTimer(4, () =>
+            {
+                if (!caller.IsValid || caller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE)
+                    return;
+                
+                caller.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+                caller.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+            
+                Utilities.SetStateChanged(caller, "CCollisionProperty", "m_CollisionGroup");
+                Utilities.SetStateChanged(caller, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+                
+                player.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+                player.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+            
+                Utilities.SetStateChanged(player, "CCollisionProperty", "m_CollisionGroup");
+                Utilities.SetStateChanged(player, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+            });
 
             // Prepare message key and arguments for the teleport notification
             var activityMessageKey = "sa_admin_tp_message";
@@ -772,7 +799,7 @@ public partial class CS2_SimpleAdmin
             // Show admin activity
             if (!SilentPlayers.Contains(caller.Slot) && _localizer != null)
             {
-                Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, adminActivityArgs);
+                Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false, adminActivityArgs);
             }
         }
     }
@@ -782,7 +809,8 @@ public partial class CS2_SimpleAdmin
     public void OnBringCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
-        if (caller == null || !caller.PawnIsAlive) return;
+        if (caller == null || caller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE) 
+            return;
 
         // Get the target players
         var targets = GetTarget(command);
@@ -796,17 +824,45 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
 
         // Process each player to teleport
-        foreach (var player in playersToTarget.Where(player => player is { Connected: PlayerConnectedState.PlayerConnected, PawnIsAlive: true }).Where(caller.CanTarget))
+        foreach (var player in playersToTarget.Where(player => player is { Connected: PlayerConnectedState.PlayerConnected, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).Where(caller.CanTarget))
         {
-            if (caller.PlayerPawn.Value == null)
+            if (caller.PlayerPawn.Value == null || player.PlayerPawn.Value == null)
                 continue;
 
             // Teleport the player to the caller and toggle noclip
             player.TeleportPlayer(caller);
-            caller.PlayerPawn.Value.ToggleNoclip();
+            // caller.PlayerPawn.Value.ToggleNoclip();
+            
+            caller.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            caller.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            
+            Utilities.SetStateChanged(caller, "CCollisionProperty", "m_CollisionGroup");
+            Utilities.SetStateChanged(caller, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+            
+            player.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            player.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_DISSOLVING;
+            
+            Utilities.SetStateChanged(player, "CCollisionProperty", "m_CollisionGroup");
+            Utilities.SetStateChanged(player, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
 
-            // Set a timer to toggle noclip back after 3 seconds
-            AddTimer(3, () => caller.PlayerPawn.Value.ToggleNoclip());
+            // Set a timer to toggle collision back after 4 seconds
+            AddTimer(4, () =>
+            {
+                if (!player.IsValid || player.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE)
+                    return;
+                
+                caller.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+                caller.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+            
+                Utilities.SetStateChanged(caller, "CCollisionProperty", "m_CollisionGroup");
+                Utilities.SetStateChanged(caller, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+                
+                player.PlayerPawn.Value.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+                player.PlayerPawn.Value.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_PLAYER;
+            
+                Utilities.SetStateChanged(player, "CCollisionProperty", "m_CollisionGroup");
+                Utilities.SetStateChanged(player, "VPhysicsCollisionAttribute_t", "m_nCollisionGroup");
+            });
 
             // Prepare message key and arguments for the bring notification
             var activityMessageKey = "sa_admin_bring_message";
@@ -815,7 +871,7 @@ public partial class CS2_SimpleAdmin
             // Show admin activity
             if (!SilentPlayers.Contains(caller.Slot) && _localizer != null)
             {
-                Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, adminActivityArgs);
+                Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false, adminActivityArgs);
             }
         }
     }
